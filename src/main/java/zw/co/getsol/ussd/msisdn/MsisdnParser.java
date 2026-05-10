@@ -4,62 +4,35 @@ import zw.co.getsol.ussd.config.UssdProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class MsisdnParser {
 
     private static final Logger log = LoggerFactory.getLogger(MsisdnParser.class);
 
     private final String countryCode;
-    private final Map<String, UssdProperties.Msisdn.Operator> operators;
-    private final Pattern msisdnPattern;
 
     public MsisdnParser(UssdProperties.Msisdn msisdnConfig) {
         this.countryCode = msisdnConfig.getCountryCode();
-        this.operators = msisdnConfig.getOperators();
-        // Matches: optional +/00 + country code, then the rest
-        this.msisdnPattern = Pattern.compile("(?:(?:00|\\+)?" + countryCode + ")?0?(\\d+)");
     }
 
-    public Msisdn parse(String rawMsisdn) {
+    /**
+     * Normalizes any MSISDN format to international format (e.g., 263771234567).
+     * Handles: 0771234567, +263771234567, 263771234567, 771234567
+     */
+    public String normalize(String rawMsisdn) {
         if (rawMsisdn == null || rawMsisdn.isBlank()) {
             throw new IllegalArgumentException("MSISDN cannot be null or empty");
         }
 
-        String cleaned = rawMsisdn.replaceAll("[\\s\\-()]", "");
-        Matcher matcher = msisdnPattern.matcher(cleaned);
+        // Strip non-digits
+        String digits = rawMsisdn.replaceAll("[^0-9]", "");
 
-        if (!matcher.matches()) {
-            log.warn("Could not parse MSISDN: {}", maskMsisdn(rawMsisdn));
-            return new Msisdn(countryCode, "", cleaned, "Unknown");
+        // Take last 9 digits (subscriber number) and prepend country code
+        if (digits.length() >= 9) {
+            return countryCode + digits.substring(digits.length() - 9);
         }
 
-        String subscriberNumber = matcher.group(1);
-
-        for (Map.Entry<String, UssdProperties.Msisdn.Operator> entry : operators.entrySet()) {
-            UssdProperties.Msisdn.Operator operator = entry.getValue();
-            if (operator.getPrefixes() != null) {
-                for (String prefix : operator.getPrefixes()) {
-                    if (subscriberNumber.startsWith(prefix)) {
-                        String operatorCode = prefix;
-                        String number = subscriberNumber.substring(prefix.length());
-                        return new Msisdn(countryCode, operatorCode, number, operator.getName());
-                    }
-                }
-            }
-        }
-
-        // No matching operator — return with unknown operator
-        String opCode = subscriberNumber.length() >= 2 ? subscriberNumber.substring(0, 2) : subscriberNumber;
-        String number = subscriberNumber.length() >= 2 ? subscriberNumber.substring(2) : "";
-        return new Msisdn(countryCode, opCode, number, "Unknown");
-    }
-
-    public String normalize(String rawMsisdn) {
-        Msisdn msisdn = parse(rawMsisdn);
-        return msisdn.toInternational();
+        log.warn("Could not normalize MSISDN: {}", maskMsisdn(rawMsisdn));
+        return countryCode + digits;
     }
 
     public static String maskMsisdn(String msisdn) {

@@ -3,9 +3,6 @@ package zw.co.getsol.ussd.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @ConfigurationProperties(prefix = "sol.ussd")
 public class UssdProperties {
@@ -142,7 +139,6 @@ public class UssdProperties {
 
     public static class Msisdn {
         private String countryCode = "263";
-        private Map<String, Operator> operators = new LinkedHashMap<>();
 
         public String getCountryCode() {
             return countryCode;
@@ -150,35 +146,6 @@ public class UssdProperties {
 
         public void setCountryCode(String countryCode) {
             this.countryCode = countryCode;
-        }
-
-        public Map<String, Operator> getOperators() {
-            return operators;
-        }
-
-        public void setOperators(Map<String, Operator> operators) {
-            this.operators = operators;
-        }
-
-        public static class Operator {
-            private List<String> prefixes;
-            private String name;
-
-            public List<String> getPrefixes() {
-                return prefixes;
-            }
-
-            public void setPrefixes(List<String> prefixes) {
-                this.prefixes = prefixes;
-            }
-
-            public String getName() {
-                return name;
-            }
-
-            public void setName(String name) {
-                this.name = name;
-            }
         }
     }
 }
