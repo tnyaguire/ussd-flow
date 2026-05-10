@@ -97,6 +97,7 @@ public class UssdProperties {
         private String flaresPath = "/ussd/flares";
         private String whatsappPath = "/ussd/whatsapp";
         private String simulatorPath = "/ussd/simulator";
+        private String bulkitPath = "/ussd/bulkit";
 
         public String getEconetPath() {
             return econetPath;
@@ -136,6 +137,14 @@ public class UssdProperties {
 
         public void setSimulatorPath(String simulatorPath) {
             this.simulatorPath = simulatorPath;
+        }
+
+        public String getBulkitPath() {
+            return bulkitPath;
+        }
+
+        public void setBulkitPath(String bulkitPath) {
+            this.bulkitPath = bulkitPath;
         }
     }
 

@@ -45,6 +45,54 @@ public class UssdGatewayController {
     }
 
     /**
+     * BulkIT USSD Gateway — receives forwarded JSON requests from the bulkit-ussd-gateway.
+     *
+     * Request: { transactionID, sourceNumber, destinationNumber, message, stage, channel }
+     * Response: { transactionID, message, stage, channel }
+     *
+     * stage: "START" or "session_active" = continue, anything else = end session.
+     */
+    @PostMapping(value = "${sol.ussd.gateway.bulkit-path:/ussd/bulkit}",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Object> bulkit(@RequestBody Map<String, Object> payload) {
+        String transactionId = String.valueOf(payload.getOrDefault("transactionID", ""));
+        String sourceNumber = String.valueOf(payload.getOrDefault("sourceNumber", ""));
+        String message = String.valueOf(payload.getOrDefault("message", ""));
+        String stage = String.valueOf(payload.getOrDefault("stage", "START"));
+
+        log.debug("BulkIT request: sessionId={}, msisdn={}, input={}, stage={}",
+                transactionId, MsisdnParser.maskMsisdn(sourceNumber), message, stage);
+
+        try {
+            String normalizedMsisdn = msisdnParser.normalize(sourceNumber);
+
+            UssdRequest request = new UssdRequest(transactionId, normalizedMsisdn, message);
+            UssdResponse response = flowEngine.process(request);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("transactionID", transactionId);
+            result.put("sourceNumber", sourceNumber);
+            result.put("destinationNumber", payload.getOrDefault("destinationNumber", ""));
+            result.put("message", response.getResponseText());
+            result.put("stage", response.isTerminateSession() ? "END" : "session_active");
+            result.put("channel", "USSD");
+
+            log.debug("BulkIT response: sessionId={}, terminate={}", transactionId, response.isTerminateSession());
+            return result;
+        } catch (Exception e) {
+            log.error("Error processing BulkIT request for sessionId={}", transactionId, e);
+
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("transactionID", transactionId);
+            errorResult.put("message", "An error occurred. Please try again.");
+            errorResult.put("stage", "END");
+            errorResult.put("channel", "USSD");
+            return errorResult;
+        }
+    }
+
+    /**
      * Flares gateway — receives USSD requests as HTTP query parameters.
      */
     @GetMapping(value = "${sol.ussd.gateway.flares-path:/ussd/flares}",
