@@ -63,16 +63,18 @@ public class FlowEngine {
             FlowContext context = contextRepository.findByMsisdn(msisdn).orElse(null);
 
             if (context == null || context.getFlowId() == null) {
-                // New user or expired state — route via entry router
+                log.info("Engine: NEW session={} msisdn={}", sessionId, MsisdnParser.maskMsisdn(msisdn));
                 return handleNewSession(msisdn, sessionId);
             }
 
             if (!Objects.equals(sessionId, context.getSessionId())) {
-                // Re-dial — new telco session, but saved state exists (resume scenario)
+                log.info("Engine: RESUME session={} msisdn={} savedFlow={} savedState={}",
+                        sessionId, MsisdnParser.maskMsisdn(msisdn), context.getFlowId(), context.getStateId());
                 return handleResume(context, sessionId);
             }
 
-            // Continuation — same telco session, process user input
+            log.info("Engine: INPUT session={} msisdn={} flow={} state={} input='{}'",
+                    sessionId, MsisdnParser.maskMsisdn(msisdn), context.getFlowId(), context.getStateId(), userInput);
             return handleInput(context, userInput);
 
         } catch (UssdException e) {

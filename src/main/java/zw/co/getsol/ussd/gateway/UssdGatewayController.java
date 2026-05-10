@@ -61,13 +61,17 @@ public class UssdGatewayController {
         String message = String.valueOf(payload.getOrDefault("message", ""));
         String stage = String.valueOf(payload.getOrDefault("stage", "START"));
 
-        log.debug("BulkIT request: sessionId={}, msisdn={}, input={}, stage={}",
-                transactionId, MsisdnParser.maskMsisdn(sourceNumber), message, stage);
+        // On START/FIRST, the message is the USSD dial string (e.g., *586*007#), not user input
+        String userInput = ("START".equalsIgnoreCase(stage) || "FIRST".equalsIgnoreCase(stage))
+                ? "" : message;
+
+        log.info("BulkIT >>> session={} msisdn={} stage={} input='{}'",
+                transactionId, MsisdnParser.maskMsisdn(sourceNumber), stage, userInput);
 
         try {
             String normalizedMsisdn = msisdnParser.normalize(sourceNumber);
 
-            UssdRequest request = new UssdRequest(transactionId, normalizedMsisdn, message);
+            UssdRequest request = new UssdRequest(transactionId, normalizedMsisdn, userInput);
             UssdResponse response = flowEngine.process(request);
 
             Map<String, Object> result = new HashMap<>();
@@ -78,10 +82,14 @@ public class UssdGatewayController {
             result.put("stage", response.isTerminateSession() ? "END" : "session_active");
             result.put("channel", "USSD");
 
-            log.debug("BulkIT response: sessionId={}, terminate={}", transactionId, response.isTerminateSession());
+            log.info("BulkIT <<< session={} stage={} message='{}'",
+                    transactionId, result.get("stage"),
+                    response.getResponseText().length() > 60
+                            ? response.getResponseText().substring(0, 60) + "..."
+                            : response.getResponseText());
             return result;
         } catch (Exception e) {
-            log.error("Error processing BulkIT request for sessionId={}", transactionId, e);
+            log.error("BulkIT ERR session={} error={}", transactionId, e.getMessage(), e);
 
             Map<String, Object> errorResult = new HashMap<>();
             errorResult.put("transactionID", transactionId);
