@@ -230,13 +230,14 @@ public class FlowEngine {
         // Render screen
         String text = screenRenderer.render(state.getScreen(), context.getData(), dynamicData);
 
-        // Save state at save-point (skip if context was cleared)
+        // Save state (skip if context was cleared)
         if (!context.isCleared()) {
             if (state.isSavePoint()) {
+                // Save-point: persist with flow's TTL for resume across session drops
                 contextRepository.save(context, flowRegistry.getFlowTtl(context.getFlowId()));
             } else {
-                // Still save session tracking (short TTL) even without save-point
-                contextRepository.save(context);
+                // Non-save-point: short TTL for active session tracking only (not resumable)
+                contextRepository.save(context, Duration.ofSeconds(90));
             }
         }
 
