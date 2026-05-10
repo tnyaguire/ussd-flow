@@ -1,6 +1,7 @@
 package zw.co.getsol.ussd.engine.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.LinkedHashMap;
 
@@ -12,6 +13,14 @@ public class FlowDefinition {
     private String name;
 
     private String ttl;
+
+    private boolean resumable = true;
+
+    @JsonProperty("resume-state")
+    private String resumeState;
+
+    @JsonProperty("resume-router")
+    private String resumeRouter;
 
     private LinkedHashMap<String, StateDefinition> states;
 
@@ -37,6 +46,30 @@ public class FlowDefinition {
 
     public void setTtl(String ttl) {
         this.ttl = ttl;
+    }
+
+    public boolean isResumable() {
+        return resumable;
+    }
+
+    public void setResumable(boolean resumable) {
+        this.resumable = resumable;
+    }
+
+    public String getResumeState() {
+        return resumeState;
+    }
+
+    public void setResumeState(String resumeState) {
+        this.resumeState = resumeState;
+    }
+
+    public String getResumeRouter() {
+        return resumeRouter;
+    }
+
+    public void setResumeRouter(String resumeRouter) {
+        this.resumeRouter = resumeRouter;
     }
 
     public LinkedHashMap<String, StateDefinition> getStates() {
