@@ -118,6 +118,16 @@ public class FlowEngine {
     private UssdResponse handleInput(FlowContext context, String userInput) {
         StateDefinition currentState = flowRegistry.getState(context.getFlowId(), context.getStateId());
 
+        // Check if this is a pagination "More" request
+        Object pageMarker = context.get("_pageMore");
+        if (pageMarker != null && userInput.equals(pageMarker.toString())) {
+            int currentPage = context.get("_page") != null ? ((Number) context.get("_page")).intValue() : 0;
+            context.put("_page", currentPage + 1);
+            log.info("Engine: PAGE session={} flow={} state={} page={}",
+                    context.getSessionId(), context.getFlowId(), context.getStateId(), currentPage + 1);
+            return renderState(context, 0);
+        }
+
         // Handle INPUT state with validation
         if (currentState.getType() == StateType.INPUT && currentState.getValidation() != null) {
             return handleValidatedInput(context, currentState, userInput);
@@ -128,6 +138,10 @@ public class FlowEngine {
         if (transition == null) {
             throw new InvalidInputException("Invalid input: " + userInput);
         }
+
+        // Clear pagination state on navigation
+        context.getData().remove("_page");
+        context.getData().remove("_pageMore");
 
         return executeTransition(context, transition, userInput);
     }
@@ -229,8 +243,28 @@ public class FlowEngine {
             context.put("_dynamicData", dynamicData.getItems());
         }
 
-        // Render screen
-        String text = screenRenderer.render(state.getScreen(), context.getData(), dynamicData);
+        // Render screen with pagination support
+        int page = context.get("_page") != null ? ((Number) context.get("_page")).intValue() : 0;
+        ScreenRenderer.RenderResult renderResult = screenRenderer.render(
+                state.getScreen(), context.getData(), dynamicData, page);
+        String text = renderResult.text();
+
+        // Track pagination state for "More" detection
+        if (renderResult.paginated() && renderResult.page() < renderResult.totalPages() - 1) {
+            // Find the "More" option number from the rendered text
+            String[] lines = text.split("\n");
+            for (String line : lines) {
+                if (line.trim().endsWith(". More")) {
+                    String num = line.trim().split("\\.")[0];
+                    context.put("_pageMore", num);
+                    break;
+                }
+            }
+            context.put("_page", renderResult.page());
+        } else {
+            context.getData().remove("_pageMore");
+            context.getData().remove("_page");
+        }
 
         // Save state (skip if context was cleared)
         if (!context.isCleared()) {
