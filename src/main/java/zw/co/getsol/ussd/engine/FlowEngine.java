@@ -128,9 +128,19 @@ public class FlowEngine {
             return renderState(context, 0);
         }
 
-        // Handle INPUT state with validation
-        if (currentState.getType() == StateType.INPUT && currentState.getValidation() != null) {
-            return handleValidatedInput(context, currentState, userInput);
+        // Handle INPUT state
+        if (currentState.getType() == StateType.INPUT) {
+            if (currentState.getValidation() != null) {
+                return handleValidatedInput(context, currentState, userInput);
+            }
+            // INPUT without validator — any non-empty input is valid
+            if (userInput != null && !userInput.isBlank()) {
+                TransitionDefinition validTransition = currentState.getTransitions() != null
+                        ? currentState.getTransitions().get("_valid") : null;
+                if (validTransition != null) {
+                    return executeTransition(context, validTransition, userInput);
+                }
+            }
         }
 
         // Resolve transition for user input
