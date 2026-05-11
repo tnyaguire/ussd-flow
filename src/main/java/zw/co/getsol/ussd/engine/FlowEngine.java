@@ -130,6 +130,14 @@ public class FlowEngine {
 
         // Handle INPUT state
         if (currentState.getType() == StateType.INPUT) {
+            // Check for explicit escape transitions (e.g., "0" to cancel) before validation
+            if (currentState.getTransitions() != null) {
+                TransitionDefinition explicitTransition = currentState.getTransitions().get(userInput);
+                if (explicitTransition != null && !userInput.startsWith("_")) {
+                    return executeTransition(context, explicitTransition, userInput);
+                }
+            }
+
             if (currentState.getValidation() != null) {
                 return handleValidatedInput(context, currentState, userInput);
             }
