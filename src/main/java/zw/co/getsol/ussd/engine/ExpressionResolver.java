@@ -8,11 +8,36 @@ public class ExpressionResolver {
 
     private static final Pattern EXPRESSION_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
 
+    /**
+     * Guard against a placeholder whose value is itself a placeholder pointing back:
+     * {@code a -> "${b}"}, {@code b -> "${a}"} would otherwise loop forever. Six passes
+     * is enough for every real chain the flow YAMLs express (catalog value referencing
+     * an action-result field, at worst one hop through another catalog key).
+     */
+    private static final int MAX_PASSES = 6;
+
     public String resolve(String template, Map<String, Object> data) {
         if (template == null || data == null) {
             return template;
         }
 
+        // Iterate so a substituted value that itself contains ${...} - the shape every
+        // catalog string uses when it references action-result fields like ${amount}
+        // and ${reference} - keeps getting resolved. Bail early when a pass makes no
+        // change (nothing left to substitute, or every remaining expression is unknown
+        // and would just come out as "").
+        String current = template;
+        for (int i = 0; i < MAX_PASSES; i++) {
+            String next = resolveOnce(current, data);
+            if (next.equals(current)) {
+                return next;
+            }
+            current = next;
+        }
+        return current;
+    }
+
+    private String resolveOnce(String template, Map<String, Object> data) {
         Matcher matcher = EXPRESSION_PATTERN.matcher(template);
         StringBuilder result = new StringBuilder();
 
